@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: compie-app-local
+    ports:
+      - "8000:8000"
+    environment:
+      - AWS_REGION=us-east-1
+      - AWS_DEFAULT_REGION=us-east-1
+      - DYNAMODB_TABLE_NAME=compie-dev-table
+      - APP_MESSAGE=Local Test Environment for Compie DevOps
+      - ENVIRONMENT=local
+      - AWS_ACCESS_KEY_ID=dummyLocalKey
+      - AWS_SECRET_ACCESS_KEY=dummyLocalSecret
+    restart: unless-stopped
