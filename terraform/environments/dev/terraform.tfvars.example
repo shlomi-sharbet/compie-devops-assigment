@@ -1,0 +1,6 @@
+aws_region   = "us-east-1"
+project_name = "compie"
+environment  = "dev"
+github_repo  = "shlomi-sharbet/compie-devops-assigment"
+app_port     = 8000
+alert_email  = "devops-alerts-placeholder@example.com"
