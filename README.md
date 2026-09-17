@@ -81,7 +81,7 @@ flowchart TD
    - Remote terminal access is handled via IAM-governed **AWS Systems Manager (SSM) Session Manager**.
 3. **Strict IAM Least-Privilege Separation**:
    - **EC2 Instance Profile**: Granted access strictly to ECR image pulling, CloudWatch log streams, DynamoDB table access, and decrypt permissions on the KMS CMK.
-   - **CI/CD Role (GitHub Actions)**: Authenticated via **OIDC (AssumeRoleWithWebIdentity)**. Can push images to ECR and trigger ASG Instance Refresh. **Has NO permissions to read DynamoDB or application secrets!**
+   - **CI/CD User (GitHub Actions)**: Dedicated IAM identity adhering to least-privilege. Can push images to ECR and trigger ASG Instance Refresh. **Has NO permissions to read DynamoDB or application secrets!**
 4. **Encryption at Rest**:
    - DynamoDB table, SSM Parameter Store `SecureString`, and EC2 root EBS volumes (10 GB gp3) are encrypted using a dedicated **Customer-Managed Key (KMS CMK)** with automatic annual rotation.
 5. **IMDSv2 Enforced**:
@@ -95,7 +95,7 @@ flowchart TD
 .
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml              # GitHub Actions CI/CD with AWS OIDC & ASG Instance Refresh
+│       └── deploy.yml              # GitHub Actions CI/CD with AWS Credentials & ASG Instance Refresh
 ├── app/
 │   ├── Dockerfile                  # Production multi-stage, non-root Dockerfile
 │   ├── main.py                     # FastAPI service with / and deep /health checks
@@ -104,22 +104,30 @@ flowchart TD
 ├── terraform/
 │   ├── environments/
 │   │   └── dev/
-│   │       ├── main.tf             # Module orchestration
-│   │       ├── variables.tf        # Environment variables
+│   │       ├── main.tf             # Module orchestration & automated ECR bootstrap
+│   │       ├── variables.tf        # Environment variables (default: eu-north-1)
 │   │       ├── terraform.tfvars    # Environment configurations
 │   │       ├── outputs.tf          # Public URLs and resource identifiers
 │   │       └── versions.tf         # AWS Provider (~> 5.0) & Terraform constraints
 │   └── modules/
-│       ├── vpc/                    # 2 Public AZs, 2 Private AZs, IGW, Single NAT GW
+│       ├── vpc/                    # Dynamic 2-AZ subnets, IGW, Single NAT GW
 │       ├── security/               # Least-privilege SGs (ALB SG, EC2 SG with zero SSH)
-│       ├── kms/                    # Customer Managed Key (CMK) and key policy
+│       ├── kms/                    # Customer Managed Key (CMK) and key policy with ASG grant
 │       ├── ecr/                    # Container registry with scan-on-push & lifecycle cleanup
 │       ├── database/               # DynamoDB table encrypted with KMS CMK
 │       ├── ssm/                    # Parameter Store configurations & KMS secrets
-│       ├── iam/                    # GitHub OIDC provider, CI/CD role, EC2 instance profile
+│       ├── iam/                    # Dedicated CI/CD User, EC2 instance profile with least privilege
 │       ├── alb/                    # Public ALB, listener, target group with /health check
-│       ├── asg/                    # Launch template, UserData script, ASG, CPU scaling policy
+│       ├── asg/                    # Launch template, resilient fallback UserData, ASG, CPU policy
 │       └── monitoring/             # CloudWatch log group, unhealthy alarm, SNS topic, dashboard
+├── screenshots/                    # Complete operational & bonus screenshots for submission
+│   ├── 01_browser_app_root.png
+│   ├── 02_browser_app_health.png
+│   ├── 03_cloudwatch_logs.png
+│   ├── 04_github_actions_pipeline.png
+│   ├── 05_cloudwatch_dashboard.png
+│   ├── 06_cloudwatch_alarm.png
+│   └── GitHub Actions.png
 ├── docker-compose.yml              # Clean local container verification
 ├── AI_USAGE.md                     # Detailed record of AI pair-programming (Bonus)
 └── README.md                       # Main architecture & operations guide
@@ -244,7 +252,7 @@ As mandated by the assignment guidelines:
 * **Instance Type**: `t3.micro` (2 vCPUs, 1 GiB RAM). Sufficient for Python ASGI workloads under low-to-medium baseline traffic while fitting inside the AWS Free Tier (750 hours/month).
 * **ASG Dimensions**:
   * `min_size = 1`: Guarantees high availability fallback.
-  * `desired_capacity = 2`: Maintains active distribution across 2 Availability Zones (`us-east-1a` and `us-east-1b`) to ensure fault tolerance.
+  * `desired_capacity = 2`: Maintains active distribution across 2 Availability Zones (`eu-north-1a` and `eu-north-1b`) to ensure fault tolerance.
   * `max_size = 3`: Upper threshold preventing runaway costs on a student/demo account during traffic surges.
 
 ### 2. Dynamic Target-Tracking Policy (Bonus)

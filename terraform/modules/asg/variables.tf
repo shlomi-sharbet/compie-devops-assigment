@@ -13,7 +13,7 @@ variable "environment" {
 variable "aws_region" {
   description = "AWS region"
   type        = string
-  default     = "us-east-1"
+  default     = "eu-north-1"
 }
 
 variable "private_subnet_ids" {
