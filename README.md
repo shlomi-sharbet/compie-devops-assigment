@@ -273,9 +273,15 @@ As mandated by the assignment guidelines:
 1. **Native Container Logging**:
    - The Docker daemon is configured with the `awslogs` driver, streaming container standard output and error directly to `/compie/dev/app-logs` in CloudWatch.
    - 7-day retention period configured in Terraform to optimize storage costs.
-2. **Proactive Alerting**:
-   - Metric Alarm `compie-dev-alb-unhealthy-hosts-alarm` monitors `UnHealthyHostCount >= 1` on the ALB target group.
-   - Connected to SNS Topic `compie-dev-alerts-topic` with email subscription.
+2. **Proactive Alerting & Notification Wiring**:
+   - **Metric Alarm**: `compie-dev-alb-unhealthy-hosts-alarm` actively tracks `UnHealthyHostCount >= 1` on the ALB target group for 2 consecutive periods.
+   - **SNS Pipeline (The Wiring)**: The alarm triggers an action to `compie-dev-alerts-topic`, which fans out to an email subscription endpoint (`alert_email`).
+   - **Real-World Setup Integration (Documentation)**:
+     - In this assessment, the endpoint is configured as an email subscription placeholder (`alert_email` in `terraform.tfvars`).
+     - **In a real enterprise production setup**, this SNS Topic would be wired to:
+       1. **PagerDuty / Opsgenie**: Via HTTPS Webhook subscription or AWS SNS integration to trigger on-call phone escalations for critical outages.
+       2. **Slack / Microsoft Teams**: Via AWS Chatbot or an AWS Lambda function posting rich alarm cards to the `#devops-alerts` or `#incident-room` channel.
+       3. **ITSM / ServiceNow / Jira Service Desk**: To automatically open Incident tickets and track MTTR (Mean Time to Resolution).
 3. **CloudWatch Observability Dashboard (Bonus)**:
    - Includes real-time widgets for:
      1. ALB Total Request Count
