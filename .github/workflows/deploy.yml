@@ -5,9 +5,8 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-# OIDC Permissions: id-token write is mandatory for GitHub OIDC authentication
+# Workflow permissions
 permissions:
-  id-token: write
   contents: read
 
 env:

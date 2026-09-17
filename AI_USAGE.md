@@ -13,7 +13,7 @@ Rather than using AI to simply generate boilerplate code blindly, AI was leverag
 1. **Model Architectural Trade-Offs**: Comparing DynamoDB vs. RDS under strict Free-Tier constraints, and evaluating Zero-Downtime deployment strategies on EC2 ASG without Kubernetes/ECS.
 2. **Enforce Security & Compliance Best Practices**: Implementing Least-Privilege IAM role segregation (EC2 vs CI/CD), eliminating SSH in favor of AWS Systems Manager Session Manager, and configuring Customer-Managed Key (CMK) KMS encryption.
 3. **Automate Modular Infrastructure as Code (IaC)**: Designing clean, reusable Terraform modules adhering to enterprise standards.
-4. **Design Modern CI/CD Workflows**: Implementing OpenID Connect (OIDC) authentication between GitHub Actions and AWS STS, eliminating long-lived static cloud credentials.
+4. **Design Modern CI/CD Workflows**: Implementing automated ASG Instance Refresh for continuous delivery with least-privilege IAM separation.
 
 ---
 
@@ -72,7 +72,7 @@ Rather than using AI to simply generate boilerplate code blindly, AI was leverag
 All AI-generated outputs underwent rigorous validation:
 1. **Static Analysis**: `terraform fmt` and `terraform validate` to verify HCL correctness and dependency graph integrity.
 2. **Linting**: Python `flake8` execution in the CI/CD pipeline to catch any unbound references or style infractions.
-3. **Least-Privilege Auditing**: Validated that the GitHub Actions OIDC role cannot access DynamoDB or read SSM parameters.
+3. **Least-Privilege Auditing**: Validated that the GitHub Actions CI/CD identity cannot access DynamoDB or read SSM parameters.
 
 ---
 

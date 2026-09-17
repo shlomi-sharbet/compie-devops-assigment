@@ -95,7 +95,7 @@ module "monitoring" {
 }
 
 # ==========================================
-# 8. IAM Module (GitHub OIDC & EC2 Instance Profile)
+# 8. IAM Module (Dedicated CI/CD User & EC2 Instance Profile)
 # ==========================================
 module "iam" {
   source                   = "../../modules/iam"

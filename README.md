@@ -1,7 +1,7 @@
 # Compie DevOps Home Assignment
 
 > **Production-Grade Microservice Infrastructure on AWS**  
-> Built with Terraform (Modular), Docker, Python FastAPI, DynamoDB, AWS KMS, CloudWatch, and GitHub Actions (OIDC).
+> Built with Terraform (Modular), Docker, Python FastAPI, DynamoDB, AWS KMS, CloudWatch, and GitHub Actions.
 
 ---
 
@@ -10,7 +10,7 @@
 2. [Security & Well-Architected Principles](#-security--well-architected-principles)
 3. [Project Directory Layout](#-project-directory-layout)
 4. [Step-by-Step Deployment Guide](#-step-by-step-deployment-guide)
-5. [CI/CD Pipeline with AWS OIDC](#-cicd-pipeline-with-aws-oidc)
+5. [CI/CD Pipeline with Automated Rolling Updates](#-cicd-pipeline-with-automated-rolling-updates)
 6. [Capacity Management & Scaling Strategy](#-capacity-management--scaling-strategy)
 7. [Logging, Monitoring & Observability](#-logging-monitoring--observability)
 8. [Bonus Features Implemented](#-bonus-features-implemented)
@@ -230,11 +230,11 @@ Expected HTTP responses:
 
 ---
 
-## 🔄 CI/CD Pipeline with AWS OIDC
+## 🔄 CI/CD Pipeline with Automated Rolling Updates
 
 The workflow `.github/workflows/deploy.yml` manages continuous delivery:
 1. **Lint & Test**: Runs `flake8` static code analysis on the Python codebase.
-2. **OIDC Authentication**: Authenticates with AWS via GitHub's short-lived JWT token (`AssumeRoleWithWebIdentity`), obtaining temporary credentials. **Zero permanent access keys are stored in GitHub!**
+2. **Secure Least-Privilege Authentication**: Authenticates with AWS via a dedicated CI/CD IAM User (`AWS_ACCESS_KEY_ID` & `AWS_SECRET_ACCESS_KEY`). The credentials have strictly scoped permissions (ECR push and ASG Instance Refresh only), completely isolated from database records and application secrets.
 3. **ECR Push**: Builds the multi-stage Docker image and tags it with both `${{ github.sha }}` and `latest`.
 4. **Zero-Downtime Rollout (Instance Refresh)**:
    - Invokes `aws autoscaling start-instance-refresh` with `MinHealthyPercentage=50` and `InstanceWarmup=180`.
