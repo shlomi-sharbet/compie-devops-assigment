@@ -95,8 +95,8 @@ resource "aws_autoscaling_group" "app" {
   instance_refresh {
     strategy = "Rolling"
     preferences {
-      min_healthy_percentage = 50
-      instance_warmup        = 180
+      min_healthy_percentage = 100
+      instance_warmup        = 120
     }
     triggers = ["tag"]
   }

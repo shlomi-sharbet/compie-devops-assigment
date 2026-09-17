@@ -66,24 +66,30 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       # ==============================================================================
-      # Step 3: Build & Push Docker Image
+      # Step 3: Build & Push Docker Image with Automated Ascending Version
       # ==============================================================================
       - name: Build, tag, and push image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+          VERSION: 1.0.${{ github.run_number }}
         run: |
-          echo "Building Docker container image..."
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./app
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "Building Docker container image for version $VERSION..."
+          FULL_IMAGE_NAME="$ECR_REGISTRY/$ECR_REPOSITORY:$VERSION"
+
+          docker build \
+            --build-arg APP_VERSION="$VERSION" \
+            --build-arg DOCKER_IMAGE="$FULL_IMAGE_NAME" \
+            -t $FULL_IMAGE_NAME \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+            ./app
 
           echo "Pushing Docker container images to ECR..."
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $FULL_IMAGE_NAME
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          echo "IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
+          echo "IMAGE_URI=$FULL_IMAGE_NAME" >> $GITHUB_ENV
 
       # ==============================================================================
-      # Step 4: Zero-Downtime Rollout using EC2 Auto Scaling Instance Refresh
+      # Step 4: True Zero-Downtime Rollout (MinHealthyPercentage=100)
       # ==============================================================================
       - name: Trigger ASG Instance Refresh (Zero-Downtime Rolling Update)
         run: |
@@ -99,12 +105,12 @@ jobs:
           fi
 
           echo "Found active ASG: $ASG_NAME"
-          echo "Starting Rolling Instance Refresh..."
+          echo "Starting Rolling Instance Refresh with MinHealthyPercentage=100 (Zero Downtime)..."
 
           REFRESH_ID=$(aws autoscaling start-instance-refresh \
             --auto-scaling-group-name "$ASG_NAME" \
             --region "$AWS_REGION" \
-            --preferences '{"MinHealthyPercentage": 50, "InstanceWarmup": 180}' \
+            --preferences '{"MinHealthyPercentage": 100, "InstanceWarmup": 120}' \
             --query "InstanceRefreshId" \
             --output text)
 

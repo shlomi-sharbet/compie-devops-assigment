@@ -21,6 +21,8 @@ def test_root_endpoint_structure():
     data = response.json()
     assert data["service"] == "compie-devops-app"
     assert "version" in data
+    assert "docker_image" in data
+    assert "served_by_instance" in data
     assert "database" in data
     assert data["database"]["table"] == "compie-test-table"
 

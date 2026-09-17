@@ -21,9 +21,14 @@ FROM python:3.11-slim AS runner
 
 WORKDIR /app
 
+ARG APP_VERSION=1.0.0
+ARG DOCKER_IMAGE=compie-dev-compie-app:latest
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PORT=8000
+    PORT=8000 \
+    APP_VERSION=$APP_VERSION \
+    DOCKER_IMAGE=$DOCKER_IMAGE
 
 # Create a dedicated non-root user and group
 RUN groupadd -g 10001 appgroup && \

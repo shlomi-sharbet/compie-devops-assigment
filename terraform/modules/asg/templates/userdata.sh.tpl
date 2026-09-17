@@ -66,6 +66,7 @@ if [ "$IMAGE_PULLED" = "true" ]; then
     -e DYNAMODB_TABLE_NAME="$DYNAMODB_TABLE" \
     -e APP_MESSAGE="$APP_MSG" \
     -e ENVIRONMENT="dev" \
+    -e INSTANCE_ID="$INSTANCE_ID" \
     --log-driver=awslogs \
     --log-opt awslogs-region="$AWS_REGION" \
     --log-opt awslogs-group="${cloudwatch_log_group}" \
@@ -79,6 +80,7 @@ else
   cat << 'EOF' > /opt/bootstrap-app/server.py
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
+import socket
 
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -88,6 +90,7 @@ class HealthHandler(BaseHTTPRequestHandler):
         body = {
             "status": "healthy",
             "mode": "standby_bootstrap",
+            "served_by_instance": socket.gethostname(),
             "message": "Compie infrastructure is online! Awaiting first CI/CD image deployment to ECR."
         }
         self.wfile.write(json.dumps(body).encode('utf-8'))
