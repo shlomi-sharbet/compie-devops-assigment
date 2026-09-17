@@ -95,20 +95,28 @@ flowchart TD
 .
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml              # GitHub Actions CI/CD with AWS Credentials & ASG Instance Refresh
+│       ├── deploy.yml              # CI/CD: Multi-stage Docker build, ascending 1.0.X tagging & 100% min-healthy rolling update
+│       └── pr-checks.yml           # Pre-merge validation: Flake8 linting, pytest, Docker build & Terraform validation (Bonus)
 ├── app/
 │   ├── Dockerfile                  # Production multi-stage, non-root Dockerfile
-│   ├── main.py                     # FastAPI service with / and deep /health checks
+│   ├── main.py                     # FastAPI service with dynamic versioning, instance ID & DynamoDB connectivity
 │   ├── requirements.txt            # Python dependencies (fastapi, boto3, uvicorn)
 │   └── .dockerignore
+├── tests/
+│   └── test_app.py                 # Pytest unit test suite for API endpoints & health checks
 ├── terraform/
 │   ├── environments/
-│   │   └── dev/
-│   │       ├── main.tf             # Module orchestration & automated ECR bootstrap
-│   │       ├── variables.tf        # Environment variables (default: eu-north-1)
-│   │       ├── terraform.tfvars    # Environment configurations
-│   │       ├── outputs.tf          # Public URLs and resource identifiers
-│   │       └── versions.tf         # AWS Provider (~> 5.0) & Terraform constraints
+│   │   ├── dev/                    # Primary dev environment
+│   │   │   ├── main.tf             # Module orchestration & automated ECR bootstrap
+│   │   │   ├── variables.tf        # Environment variables (default: eu-north-1)
+│   │   │   ├── terraform.tfvars    # Active dev configurations
+│   │   │   ├── outputs.tf          # Public URLs and resource identifiers
+│   │   │   └── versions.tf         # AWS Provider (~> 5.0) & Terraform constraints
+│   │   └── staging/                # Second environment for multi-environment parity (Bonus)
+│   │       ├── main.tf             # Isolated CIDR (10.1.0.0/16) reusing modular stack
+│   │       ├── variables.tf        # Staging environment variables
+│   │       ├── outputs.tf          # Staging outputs
+│   │       └── versions.tf         # Staging version constraints
 │   └── modules/
 │       ├── vpc/                    # Dynamic 2-AZ subnets, IGW, Single NAT GW
 │       ├── security/               # Least-privilege SGs (ALB SG, EC2 SG with zero SSH)
@@ -121,13 +129,13 @@ flowchart TD
 │       ├── asg/                    # Launch template, resilient fallback UserData, ASG, CPU policy
 │       └── monitoring/             # CloudWatch log group, unhealthy alarm, SNS topic, dashboard
 ├── screenshots/                    # Complete operational & bonus screenshots for submission
-│   ├── 01_browser_app_root.png
-│   ├── 02_browser_app_health.png
-│   ├── 03_cloudwatch_logs.png
-│   ├── 04_github_actions_pipeline.png
-│   ├── 05_cloudwatch_dashboard.png
-│   ├── 06_cloudwatch_alarm.png
-│   └── GitHub Actions.png
+│   ├── 01_browser_app_root.png     # Live browser screenshot of / endpoint
+│   ├── 02_browser_app_health.png   # Live browser screenshot of /health endpoint
+│   ├── 03_cloudwatch_logs.png      # Live CloudWatch log stream from EC2 container
+│   ├── 04_github_actions_pipeline.png # Successful CI/CD deployment run
+│   ├── 05_cloudwatch_dashboard.png # CloudWatch Observability Dashboard (Bonus)
+│   ├── 06_cloudwatch_alarm.png     # CloudWatch UnHealthyHostCount metric alarm
+│   └── GitHub Actions.png          # Overview of GitHub Actions runs
 ├── docker-compose.yml              # Clean local container verification
 ├── AI_USAGE.md                     # Detailed record of AI pair-programming (Bonus)
 └── README.md                       # Main architecture & operations guide
@@ -201,45 +209,64 @@ curl -i http://<ALB_DNS_NAME>/health
 ```
 
 Expected HTTP responses:
-* **Root (`/`)**: `HTTP 200 OK` with JSON displaying connection status and visit counter:
+* **Root (`/`)**: `HTTP 200 OK` with JSON displaying active version, image tag, serving EC2 instance ID, and DynamoDB visits:
   ```json
   {
     "status": "online",
     "service": "compie-devops-app",
-    "version": "1.0.0",
+    "version": "1.0.8",
+    "docker_image": "807733922953.dkr.ecr.eu-north-1.amazonaws.com/compie-dev-compie-app:1.0.8",
+    "served_by_instance": "i-0f373d24bde7a1c45",
     "environment": "dev",
     "message": "Welcome to Compie Cloud Solutions DevOps Microservice!",
     "database": {
       "table": "compie-dev-table",
+      "region": "eu-north-1",
       "status": "connected",
-      "total_visits": 1
-    }
+      "total_visits": 126,
+      "error": null
+    },
+    "timestamp": "2026-09-17T11:05:53.936742+00:00"
   }
   ```
-* **Health (`/health`)**: `HTTP 200 OK` confirming active DynamoDB reachability:
+* **Health (`/health`)**: `HTTP 200 OK` confirming healthy DynamoDB status and serving instance:
   ```json
   {
     "status": "healthy",
+    "version": "1.0.8",
+    "docker_image": "807733922953.dkr.ecr.eu-north-1.amazonaws.com/compie-dev-compie-app:1.0.8",
+    "served_by_instance": "i-0f373d24bde7a1c45",
     "database": {
       "connected": true,
       "table_name": "compie-dev-table",
       "table_status": "ACTIVE"
-    }
+    },
+    "timestamp": "2026-09-17T11:04:41.508137+00:00"
   }
   ```
 
 ---
 
-## 🔄 CI/CD Pipeline with Automated Rolling Updates
+## 🔄 CI/CD Pipelines & Continuous Delivery
 
-The workflow `.github/workflows/deploy.yml` manages continuous delivery:
-1. **Lint & Test**: Runs `flake8` static code analysis on the Python codebase.
-2. **Secure Least-Privilege Authentication**: Authenticates with AWS via a dedicated CI/CD IAM User (`AWS_ACCESS_KEY_ID` & `AWS_SECRET_ACCESS_KEY`). The credentials have strictly scoped permissions (ECR push and ASG Instance Refresh only), completely isolated from database records and application secrets.
-3. **ECR Push**: Builds the multi-stage Docker image and tags it with both `${{ github.sha }}` and `latest`.
-4. **Zero-Downtime Rollout (Instance Refresh)**:
-   - Invokes `aws autoscaling start-instance-refresh` with `MinHealthyPercentage=50` and `InstanceWarmup=180`.
-   - The ASG terminates old instances one by one only *after* new instances have passed the ALB `/health` checks.
-   - The workflow monitors the refresh progression until full rollout completion.
+The repository includes two production-grade GitHub Actions workflows:
+
+### 1. Continuous Deployment (`.github/workflows/deploy.yml`)
+Triggers on every `push` to the `main` branch:
+1. **Static Analysis**: Runs `flake8` static code linting on the Python codebase.
+2. **Dedicated IAM Authentication**: Authenticates with AWS via dedicated CI/CD credentials (`AWS_ACCESS_KEY_ID` & `AWS_SECRET_ACCESS_KEY`). The IAM User has tightly scoped permissions (ECR push & ASG instance refresh only), preventing any access to database data or application secrets.
+3. **Automated Ascending Versioning**: Dynamically computes `1.0.${{ github.run_number }}` and builds the multi-stage Docker image, baking `APP_VERSION` and `DOCKER_IMAGE` directly into the container environment.
+4. **Zero-Downtime Rolling Update**:
+   - Executes `aws autoscaling start-instance-refresh` with `MinHealthyPercentage=100` and `InstanceWarmup=120`.
+   - The ASG launches the new instance, verifies healthy ALB `/health` status (2 consecutive 200 OK checks), and only then safely terminates the previous instance, guaranteeing **zero 502/downtime**.
+   - Polls and tracks rollout status until complete.
+
+### 2. Pre-Merge Validation (`.github/workflows/pr-checks.yml`) (Bonus)
+Triggers on all Pull Requests targeting `main`:
+1. **Code Quality**: Enforces PEP 8 compliance via Flake8.
+2. **Automated Unit Tests**: Runs pytest on `tests/test_app.py` validating endpoints and health logic.
+3. **Docker Build Test**: Ensures the container builds cleanly without pushing to registry.
+4. **Terraform Validation**: Runs `terraform fmt -check` and `terraform validate` across both `dev` and `staging` environments.
 
 ---
 

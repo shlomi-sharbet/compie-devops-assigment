@@ -43,6 +43,7 @@ env/
 .DS_Store
 Thumbs.db
 *.log
+*.zip
 
 # IDE & Editor
 .vscode/
