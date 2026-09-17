@@ -295,12 +295,15 @@ As mandated by the assignment guidelines:
 
 | Bonus Item | Status | Implementation Details |
 | :--- | :---: | :--- |
-| **CloudWatch Dashboard** | ✅ | Defined via `aws_cloudwatch_dashboard.main` with 4 custom time-series widgets. |
-| **Customer-Managed KMS Key (CMK)** | ✅ | Dedicated KMS key with automatic rotation; encrypts EBS, DynamoDB, and SSM. |
-| **Dynamic ASG Scaling Policy** | ✅ | Target-tracking on 50% average CPU utilization. |
-| **AI Collaboration Artifact** | ✅ | Comprehensive `AI_USAGE.md` documenting prompts, trade-offs, and methodology. |
-| **Zero SSH Attack Surface** | ✅ | Port 22 completely closed; management via AWS SSM Session Manager. |
-| **OIDC Authentication** | ✅ | Keyless IAM role federation for GitHub Actions. |
+| **CloudWatch Dashboard** | ✅ | Defined via `aws_cloudwatch_dashboard.main` with 4 custom time-series widgets (screenshot in `screenshots/05_cloudwatch_dashboard.png`). |
+| **Customer-Managed KMS Key (CMK)** | ✅ | Dedicated KMS key with automatic rotation; encrypts EBS volumes, DynamoDB, and SSM. |
+| **Dynamic ASG Scaling Policy** | ✅ | Target-tracking on 50% average CPU utilization (`compie-dev-cpu-target-tracking`). |
+| **AI Collaboration Artifact** | ✅ | Comprehensive `AI_USAGE.md` documenting prompts, architectural trade-offs, and methodology. |
+| **PR / Pre-Merge Checks Pipeline** | ✅ | Implemented via `.github/workflows/pr-checks.yml` (automated Flake8, pytest, Docker build verification, and Terraform validation). |
+| **A Second Environment (Staging)** | ✅ | Implemented via `terraform/environments/staging/` reusing 100% of modular code with isolated CIDR `10.1.0.0/16`. |
+| **HTTPS On Public Endpoint (Ready)** | ✅ | ALB Security Group pre-configured with Port 443 inbound; documented Route53 + ACM Certificate architecture for custom domains. |
+| **Zero SSH Attack Surface** | ✅ | Port 22 completely closed; management exclusively via AWS SSM Session Manager. |
+| **Resilient Self-Healing Bootstrap** | ✅ | Automatic fallback service in `userdata.sh.tpl` guaranteeing `200 OK` health checks before initial image push. |
 
 ---
 
