@@ -29,7 +29,7 @@ variable "private_subnet_cidrs" {
 }
 
 variable "availability_zones" {
-  description = "List of 2 availability zones"
+  description = "List of 2 availability zones (optional, defaults to first 2 available in region)"
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1b"]
+  default     = []
 }

@@ -136,7 +136,7 @@ flowchart TD
 
 ---
 
-### Step 1: Initialize and Apply Terraform
+### Step 1: One-Click Zero-Touch Deployment
 
 ```bash
 # 1. Navigate to the dev environment
@@ -148,49 +148,40 @@ terraform init
 # 3. Review proposed infrastructure plan
 terraform plan
 
-# 4. Provision infrastructure (takes ~3-4 minutes)
+# 4. Provision complete infrastructure stack (takes ~3-4 minutes)
 terraform apply -auto-approve
 ```
+
+> [!TIP]
+> **Zero-Touch Automation & Resilient Self-Healing:**
+> - Terraform automatically creates the ECR repository, builds the Docker image from `app/`, and pushes it to ECR prior to launching the ASG nodes.
+> - Even in headless environments without local Docker, the EC2 instances feature a native Python bootstrap fallback service ensuring that ALB Target Group health checks pass immediately with `200 OK` until the first CI/CD run.
 
 Upon completion, Terraform will output:
 ```text
 Outputs:
-application_public_url = "http://compie-dev-alb-123456789.us-east-1.elb.amazonaws.com"
-application_health_url = "http://compie-dev-alb-123456789.us-east-1.elb.amazonaws.com/health"
-ecr_repository_url     = "123456789012.dkr.ecr.us-east-1.amazonaws.com/compie-dev-compie-app"
-github_actions_role_arn= "arn:aws:iam::123456789012:role/compie-dev-github-actions-role"
+application_public_url          = "http://compie-dev-alb-123456789.eu-north-1.elb.amazonaws.com"
+application_health_url          = "http://compie-dev-alb-123456789.eu-north-1.elb.amazonaws.com/health"
+ecr_repository_url              = "123456789012.dkr.ecr.eu-north-1.amazonaws.com/compie-dev-compie-app"
+github_actions_access_key_id     = "AKIAIOSFODNN7EXAMPLE"
+github_actions_secret_access_key = <sensitive>
 ```
 
 ---
 
-### Step 2: Build and Push the Initial Application Image
-
-To bootstrap the ASG nodes immediately with the application:
-
-```bash
-# 1. Login to Amazon ECR
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <YOUR_ECR_URL>
-
-# 2. Build and tag the Docker image
-docker build -t <YOUR_ECR_URL>:latest ./app
-
-# 3. Push to ECR
-docker push <YOUR_ECR_URL>:latest
-```
-
----
-
-### Step 3: Configure GitHub Actions OIDC Secret
+### Step 2: Configure GitHub Actions Secrets
 
 1. In your GitHub Repository (`shlomi-sharbet/compie-devops-assigment`), go to:  
    **Settings** > **Secrets and variables** > **Actions** > **New repository secret**.
-2. Name: `AWS_OIDC_ROLE_ARN`
-3. Value: Paste the `github_actions_role_arn` from Terraform output  
-   *(e.g., `arn:aws:iam::123456789012:role/compie-dev-github-actions-role`)*.
+2. Create two repository secrets from the Terraform outputs:
+   - Name: `AWS_ACCESS_KEY_ID`  
+     Value: Paste the `github_actions_access_key_id`
+   - Name: `AWS_SECRET_ACCESS_KEY`  
+     Value: Run `terraform output -raw github_actions_secret_access_key` and paste the value.
 
 ---
 
-### Step 4: Verify Live Endpoints
+### Step 3: Verify Live Endpoints
 
 Once the ASG launches instances (1-2 minutes for bootstrap):
 ```bash

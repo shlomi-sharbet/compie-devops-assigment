@@ -1,54 +1,19 @@
 # ==========================================
-# 1. GitHub OIDC Identity Provider
+# 1. CI/CD Identity: Dedicated GitHub Actions IAM User
 # ==========================================
-# GitHub's well-known thumbprints for token.actions.githubusercontent.com
-resource "aws_iam_openid_connect_provider" "github" {
-  url            = "https://token.actions.githubusercontent.com"
-  client_id_list = ["sts.amazonaws.com"]
-  thumbprint_list = [
-    "6938fd4d98bab03faadb97b34396831e3780aea1",
-    "1c5878a977717a9526212c0d00f109043bea0a70"
-  ]
+# Secure, dedicated IAM user for CI/CD automation.
+# Adheres strictly to Least-Privilege, granting ONLY ECR push and ASG Instance Refresh.
+resource "aws_iam_user" "github_actions" {
+  name = "${var.project_name}-${var.environment}-github-actions-user"
 
   tags = {
-    Name        = "${var.project_name}-github-oidc-provider"
+    Name        = "${var.project_name}-${var.environment}-github-actions-user"
     Environment = var.environment
   }
 }
 
-# ==========================================
-# 2. CI/CD Identity: GitHub Actions IAM Role
-# ==========================================
-resource "aws_iam_role" "github_actions" {
-  name        = "${var.project_name}-${var.environment}-github-actions-role"
-  description = "IAM Role assumed by GitHub Actions via OIDC for CI/CD"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "GitHubActionsOIDC"
-        Effect = "Allow"
-        Principal = {
-          Federated = aws_iam_openid_connect_provider.github.arn
-        }
-        Action = "sts:AssumeRoleWithWebIdentity"
-        Condition = {
-          StringEquals = {
-            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          }
-          StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:*"
-          }
-        }
-      }
-    ]
-  })
-
-  tags = {
-    Name        = "${var.project_name}-${var.environment}-github-actions-role"
-    Environment = var.environment
-  }
+resource "aws_iam_access_key" "github_actions" {
+  user = aws_iam_user.github_actions.name
 }
 
 # CI/CD Least Privilege Policy: Push to ECR & Trigger ASG Refresh ONLY (NO SECRETS ACCESS!)
@@ -97,8 +62,8 @@ resource "aws_iam_policy" "github_actions_policy" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "github_actions_attach" {
-  role       = aws_iam_role.github_actions.name
+resource "aws_iam_user_policy_attachment" "github_actions_attach" {
+  user       = aws_iam_user.github_actions.name
   policy_arn = aws_iam_policy.github_actions_policy.arn
 }
 

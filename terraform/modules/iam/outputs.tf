@@ -8,9 +8,20 @@ output "instance_profile_arn" {
   value       = aws_iam_instance_profile.ec2_profile.arn
 }
 
-output "github_actions_role_arn" {
-  description = "ARN of the IAM Role for GitHub Actions OIDC"
-  value       = aws_iam_role.github_actions.arn
+output "github_actions_user_name" {
+  description = "Name of the IAM User for GitHub Actions CI/CD"
+  value       = aws_iam_user.github_actions.name
+}
+
+output "github_actions_access_key_id" {
+  description = "Access Key ID for GitHub Actions CI/CD"
+  value       = aws_iam_access_key.github_actions.id
+}
+
+output "github_actions_secret_access_key" {
+  description = "Secret Access Key for GitHub Actions CI/CD"
+  value       = aws_iam_access_key.github_actions.secret
+  sensitive   = true
 }
 
 output "ec2_role_name" {

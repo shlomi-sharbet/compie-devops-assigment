@@ -38,9 +38,41 @@ resource "aws_kms_key" "main" {
           "kms:Decrypt*",
           "kms:ReEncrypt*",
           "kms:GenerateDataKey*",
-          "kms:Describe*"
+          "kms:Describe*",
+          "kms:CreateGrant"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "Allow Auto Scaling Service-Linked Role to Use CMK"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "Allow Auto Scaling to Attach Persistent Grants"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+        }
+        Action = [
+          "kms:CreateGrant"
+        ]
+        Resource = "*"
+        Condition = {
+          Bool = {
+            "kms:GrantIsForAWSResource" = "true"
+          }
+        }
       }
     ]
   })

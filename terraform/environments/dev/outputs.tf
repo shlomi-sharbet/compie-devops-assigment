@@ -13,9 +13,15 @@ output "ecr_repository_url" {
   value       = module.ecr.repository_url
 }
 
-output "github_actions_role_arn" {
-  description = "IAM Role ARN to be configured in GitHub Secrets for OIDC"
-  value       = module.iam.github_actions_role_arn
+output "github_actions_access_key_id" {
+  description = "AWS Access Key ID to be configured in GitHub Secrets (AWS_ACCESS_KEY_ID)"
+  value       = module.iam.github_actions_access_key_id
+}
+
+output "github_actions_secret_access_key" {
+  description = "AWS Secret Access Key to be configured in GitHub Secrets (AWS_SECRET_ACCESS_KEY)"
+  value       = module.iam.github_actions_secret_access_key
+  sensitive   = true
 }
 
 output "dynamodb_table_name" {

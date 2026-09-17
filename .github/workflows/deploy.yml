@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: eu-north-1
   ECR_REPOSITORY: compie-dev-compie-app
   ASG_NAME_PREFIX: compie-dev-asg
 
@@ -50,14 +50,14 @@ jobs:
         uses: actions/checkout@v4
 
       # ==============================================================================
-      # Step 1: Secure OIDC Authentication to AWS (Zero hardcoded secrets!)
+      # Step 1: Secure CI/CD Authentication to AWS (Least-Privilege Dedicated User)
       # ==============================================================================
-      - name: Configure AWS Credentials via OIDC
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-          audience: sts.amazonaws.com
 
       # ==============================================================================
       # Step 2: Authenticate to Amazon ECR

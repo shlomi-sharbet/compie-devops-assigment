@@ -37,6 +37,30 @@ module "ecr" {
 }
 
 # ==========================================
+# 4.1 Automated Docker Image Bootstrap (Zero-Touch)
+# ==========================================
+# Automatically builds and pushes initial Docker image to ECR upon repository creation.
+# Uses on_failure = continue so that if local Docker/AWS-CLI are not present,
+# the EC2 resilient bootstrap fallback handles traffic seamlessly.
+resource "terraform_data" "ecr_bootstrap_image" {
+  depends_on = [module.ecr]
+
+  triggers_replace = {
+    app_hash        = filemd5("${path.module}/../../../app/main.py")
+    dockerfile_hash = filemd5("${path.module}/../../../app/Dockerfile")
+  }
+
+  provisioner "local-exec" {
+    command    = <<-EOT
+      aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${module.ecr.repository_url}
+      docker build -t ${module.ecr.repository_url}:latest ${path.module}/../../../app
+      docker push ${module.ecr.repository_url}:latest
+    EOT
+    on_failure = continue
+  }
+}
+
+# ==========================================
 # 5. Database Module (DynamoDB encrypted with KMS CMK)
 # ==========================================
 module "database" {
@@ -117,4 +141,6 @@ module "asg" {
   min_size              = 1
   desired_capacity      = 2
   max_size              = 3
+
+  depends_on = [terraform_data.ecr_bootstrap_image]
 }
